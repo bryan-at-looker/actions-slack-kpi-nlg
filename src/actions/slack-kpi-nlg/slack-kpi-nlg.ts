@@ -60,6 +60,12 @@ Slack's Block Kit can't upload & post, so we need to put the normalized chart on
     sensitive: false,
     description: "S3 Region e.g. us-east-1, us-west-1, ap-south-1 from " +
       "http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region.",
+  }, {
+    name: 'bucket',
+    label: "Bucket",
+    required: true,
+    sensitive: false,
+    description: 'The S3 bucket name to store the public images. This bucket needs to allow public access'
   }
   ]
 
