@@ -18,13 +18,14 @@ const apiLimitSize = 1000
 
 export class SlackKPIBlockAction extends Hub.Action {
   allowedTags = ['Period Analysis']
+  requiredFields = [{ any_tag: this.allowedTags }]
   executeInOwnProcess = true
-  name = "slacknlg"
-  label = "Slack KPI Block"
+  name = "slack-kpi-nlg"
+  label = "Slack KPI NLG (Block Kit)"
   iconName = "slacknlg/slacklooker.png"
   description = "Send a KPI's Period over Period results to Looker with NLG"
   supportedActionTypes = [Hub.ActionType.Query]
-  requiredFields = [{ any_tag: this.allowedTags }]
+  supportedFormats = [Hub.ActionFormat.JsonDetail]
   params = [
     {
       name: "slack_api_token",
@@ -37,7 +38,7 @@ https://github.com/looker/actions/blob/master/src/actions/slack/README.md \
 This action uses a http://export.highcharts.com to render an object by sending \
 normalized data to the endpoint and using it in a Slack block as an image accessory. \
 \
-Slack's Block Kit can't upload & post, so we need to put it on a public bucket.
+Slack's Block Kit can't upload & post, so we need to put the normalized chart on a public s3 bucket.
 `,
     sensitive: true,
   }, {
@@ -64,7 +65,6 @@ Slack's Block Kit can't upload & post, so we need to put it on a public bucket.
 
   async execute(request: Hub.ActionRequest) {
 
-    // var att = ( request && request.attachment) ? request.attachment : {}
     var d = ( request && request.attachment && request.attachment.dataJSON) ? request.attachment.dataJSON : {}
     const domain = (request && request.scheduledPlan && request.scheduledPlan.url) ? request.scheduledPlan.url.split('/')[2] : ''
     const dashboard_link = (request.formParams && request.formParams.dashboard_id) ? `https://${domain}/dashboards/${request.formParams.dashboard_id}` : ''
@@ -98,24 +98,25 @@ Slack's Block Kit can't upload & post, so we need to put it on a public bucket.
     }
 
     // structure the data
-    var data = createDataStructure(request) 
-  
-    var image = await this.getHighChartsImage(request, data);
-    const filename = `${uuid.v4()}.png`
-    // const image_url = `https://s3.amazonaws.com/${request.params.bucket}/${filename}`;
-
-    var image_to_s3 = await this.sendToS3(image, filename, request);
-    
-    const image_url = image_to_s3.Location.toString();
 
     let response
     try {
+
+      var data = createDataStructure(request) 
+  
+      var image = await this.getHighChartsImage(request, data);
+      const filename = `${uuid.v4()}.png`  
+
+      
+      var image_to_s3 = await this.sendToS3(image, filename, request);
+      const image_url = image_to_s3.Location.toString();
       // create client
       const slack = this.slackClientFromRequest(request)
 
       // title of the block post
       const link_title = (request.scheduledPlan && request.scheduledPlan.title) ? request.scheduledPlan.title  : ''
 
+      // call the nlg text
       const nlg_text = [
         nlg.periods(data),
         nlg.min(data),
@@ -139,9 +140,7 @@ Slack's Block Kit can't upload & post, so we need to put it on a public bucket.
         ]
       }
 
-      if (true) {
-        await slack.chat.postMessage(post_options)
-      }
+      await slack.chat.postMessage(post_options)
 
     } catch (e) {
       response = { success: false, message: e }

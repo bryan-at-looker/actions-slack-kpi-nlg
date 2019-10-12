@@ -57,7 +57,6 @@ export function createDataStructure (request: any) {
   out['normalized_previous_period'] = out.previous_period.map ((o: any)=> { return (( parseFloat(o) - out.min.value ) / out.max.value) } )
   out['normalized_this_period'] = out.this_period.map ((o: any)=> { return ( ( parseFloat(o) - out.min.value ) / out.max.value  ) } )
   
-
   // totals
   out['totals_this_period'] = {
     value: data.totals_data[measure.name][this_period].value,
@@ -76,8 +75,8 @@ export function createDataStructure (request: any) {
   return out
 }
 
-function inferGrain (dates: any) {
+function inferGrain (_dates: any) {
   // TODO create a function that smartly determines what the grain is
-  if (!dates) {return ''}
+  // if (!dates) {return ''}
   return 'days'
 }
