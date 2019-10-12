@@ -22,7 +22,7 @@ export class SlackKPIBlockAction extends Hub.Action {
   executeInOwnProcess = true
   name = "slack-kpi-nlg"
   label = "Slack KPI NLG (Block Kit)"
-  iconName = "slacknlg/slacklooker.png"
+  iconName = "slack-kpi-nlg/slacklooker.png"
   description = "Send a KPI's Period over Period results to Looker with NLG"
   supportedActionTypes = [Hub.ActionType.Query]
   supportedFormats = [Hub.ActionFormat.JsonDetail]
