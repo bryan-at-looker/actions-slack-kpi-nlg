@@ -17,8 +17,7 @@ interface Channel {
 const apiLimitSize = 1000
 
 export class SlackKPIBlockAction extends Hub.Action {
-  allowedTags = ['Period Analysis']
-  requiredFields = [{ any_tag: this.allowedTags }]
+  requiredFields = [{ tag: 'Period Analysis' }]
   executeInOwnProcess = true
   name = "slack-kpi-nlg"
   label = "Slack KPI NLG (Block Kit)"
