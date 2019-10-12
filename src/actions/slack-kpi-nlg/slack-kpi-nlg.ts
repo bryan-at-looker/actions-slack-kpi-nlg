@@ -107,7 +107,7 @@ Slack's Block Kit can't upload & post, so we need to put the normalized chart on
       var image = await this.getHighChartsImage(request, data);
       const filename = `${uuid.v4()}.png`  
 
-      
+
       var image_to_s3 = await this.sendToS3(image, filename, request);
       const image_url = image_to_s3.Location.toString();
       // create client

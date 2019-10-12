@@ -3,7 +3,7 @@ import * as sinon from "sinon"
 
 import * as Hub from "../../hub"
 
-import { SlackKPIBlockAction } from "./slacknlg"
+import { SlackKPIBlockAction } from "./slack-kpi-nlg"
 
 const action = new SlackKPIBlockAction()
 
