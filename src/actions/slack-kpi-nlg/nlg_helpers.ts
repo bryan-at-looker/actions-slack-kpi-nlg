@@ -11,7 +11,7 @@ export function max (data: any) {
 export function periods (data: any) {
   const end = data.this_period_dates.length-1
   const percent_verb = (data.totals_period_over_period_growth.value < 0) ? 'shrunk' : 'grew'
-  return `This period _(${data.this_period_dates[0]} to ${data.this_period_dates[end]})_ *${percent_verb}* by *${data.totals_period_over_period_growth.rendered}* over the Previous Period _(${data.previous_period_dates[0]} to ${data.previous_period_dates[end]})_`
+  return `This period _(${data.this_period_dates[0]} to ${data.this_period_dates[end]})_ *${percent_verb}* by *${data.totals_period_over_period_growth.rendered}* over the previous period _(${data.previous_period_dates[0]} to ${data.previous_period_dates[end]})_`
 }
 
 export function period_growth (data: any, type: string) {

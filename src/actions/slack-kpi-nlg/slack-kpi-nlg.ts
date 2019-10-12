@@ -1,9 +1,13 @@
 import * as Hub from "../../hub"
 import * as httpRequest from "request-promise-native"
 import * as nlg from './nlg_helpers'
+import * as uuid from "uuid"
 
 import { WebClient } from "@slack/client"
+import * as S3 from "aws-sdk/clients/s3"
 import { createDataStructure } from "./data_structure"
+
+// const fs = require('fs')
 
 interface Channel {
   id: string,
@@ -21,19 +25,42 @@ export class SlackKPIBlockAction extends Hub.Action {
   description = "Send a KPI's Period over Period results to Looker with NLG"
   supportedActionTypes = [Hub.ActionType.Query]
   requiredFields = [{ any_tag: this.allowedTags }]
-  params = [{
-    name: "slack_api_token",
-    label: "Slack API Token",
-    required: true,
-    description: `A Slack API token that includes the permissions "channels:read", \
+  params = [
+    {
+      name: "slack_api_token",
+      label: "Slack API Token",
+      required: true,
+      description: `A Slack API token that includes the permissions "channels:read", \
 "users:read", and "files:write:user". You can follow the instructions to get a token at \
 https://github.com/looker/actions/blob/master/src/actions/slack/README.md \
 \
 This action uses a http://export.highcharts.com to render an object by sending \
-normalized data to the endpoint and using it in a Slack block as an image accessory.
+normalized data to the endpoint and using it in a Slack block as an image accessory. \
+\
+Slack's Block Kit can't upload & post, so we need to put it on a public bucket.
 `,
     sensitive: true,
-  }]
+  }, {
+    name: "access_key_id",
+    label: "Access Key",
+    required: true,
+    sensitive: true,
+    description: "Your access key for S3.",
+  }, {
+    name: "secret_access_key",
+    label: "Secret Key",
+    required: true,
+    sensitive: true,
+    description: "Your secret key for S3.",
+  }, {
+    name: "region",
+    label: "Region",
+    required: true,
+    sensitive: false,
+    description: "S3 Region e.g. us-east-1, us-west-1, ap-south-1 from " +
+      "http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region.",
+  }
+  ]
 
   async execute(request: Hub.ActionRequest) {
 
@@ -72,14 +99,15 @@ normalized data to the endpoint and using it in a Slack block as an image access
 
     // structure the data
     var data = createDataStructure(request) 
-    
-    // REMOVE ME
-    const test = true
   
-    if (!test ) {
-      var image = await this.getHighChartsImage(request, data);
-    }
+    var image = await this.getHighChartsImage(request, data);
+    const filename = `${uuid.v4()}.png`
+    // const image_url = `https://s3.amazonaws.com/${request.params.bucket}/${filename}`;
+
+    var image_to_s3 = await this.sendToS3(image, filename, request);
     
+    const image_url = image_to_s3.Location.toString();
+
     let response
     try {
       // create client
@@ -104,14 +132,14 @@ normalized data to the endpoint and using it in a Slack block as an image access
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*<${dashboard_link}|${data.measure.label}: ${link_title}>*\n${nlg_text.join(' ')}`
+              text: `*<${dashboard_link}|${data.measure.label}: ${link_title}>*\n${nlg_text.join('. ')}`
             },
-            accessory: { type: "image", image_url: `http://export.highcharts.com/${image || ''}`, alt_text:"KPI" }
+            accessory: { type: "image", image_url: image_url, alt_text:"KPI" }
           }
         ]
       }
 
-      if (!test) {
+      if (true) {
         await slack.chat.postMessage(post_options)
       }
 
@@ -219,6 +247,16 @@ normalized data to the endpoint and using it in a Slack block as an image access
     return new WebClient(request.params.slack_api_token!)
   }
 
+  private sendToS3 (image: any, filename: string, request: any ) {
+    const s3 = this.amazonS3ClientFromRequest(request);
+    return s3.upload({
+      Bucket: request.params.bucket,
+      Key: filename,
+      Body: image,
+      ACL: 'public-read'
+    }).promise()
+  }
+
   // take the data and post it do
   private getHighChartsImage(_request: any, data: any) {
     //  we are using an insecure, multi-tenant endpoint for this project. Data must be normalized before sending
@@ -265,9 +303,10 @@ normalized data to the endpoint and using it in a Slack block as an image access
 
     var options = { 
       method: 'POST',
+      encoding: null,
       url: 'http://export.highcharts.com',
       body: { 
-        async: true,
+        async: false,
         constr: 'Chart',
         width: 400,
         scale: 1,
@@ -278,6 +317,15 @@ normalized data to the endpoint and using it in a Slack block as an image access
     };
     return httpRequest.post(options).promise();
   }
+
+  protected amazonS3ClientFromRequest(request: Hub.ActionRequest) {
+    return new S3({
+      region: request.params.region,
+      accessKeyId: request.params.access_key_id,
+      secretAccessKey: request.params.secret_access_key,
+    })
+  }
+
 }
 
 Hub.addAction(new SlackKPIBlockAction())
